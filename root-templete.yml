@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  "Root Template"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "VPC and Subnet Configuration"
+        Parameters:
+          - VpcCidrBlock
+          - CidrBlockForPubS1
+          - CidrBlockForPubS2
+          - CidrBlockForPriS1
+          - CidrBlockForPriS2
+      - Label:
+          default: "EC2 Configuration"
+        Parameters:
+        - KeyName
+        - ImageId
+      - Label:
+          default: "Autoscaling Group Configuration"
+        Parameters:
+        - ASGMax
+        - ASGMin
+        - ASGDesired
+      - Label:
+          default: "CFN Templates URL"
+        Parameters:
+        - VpcTemplateURL
+        - ELBAutoscaleTemplateURL
+    ParameterLabels:
+      VpcCidrBlock:
+        default: "Please specify CIDR range for VPC"
+      CidrBlockForPubS1:
+        default: "Please specify CIDR range for Public Subnet 1"
+      CidrBlockForPubS2:
+        default: "Please specify CIDR range for Public Subnet 2"
+      CidrBlockForPriS1:
+        default: "Please specify CIDR range for Private Subnet 1"
+      CidrBlockForPriS2:
+        default: "Please specify CIDR range for Private Subnet 2"
+      KeyName:
+        default: "Select SSH Key-Pair for EC2"
+      ImageId:
+        default: "Specify AMI for EC2 Instance (default: ami-us-west-2)"
+      ASGMax:
+        default: "Autoscaling Group Max Size"
+      ASGMin:
+        default: "Autoscaling Group Min Size"
+      ASGDesired:
+        default: "Autoscaling Group Desired Size"
+
+
+Parameters:
+  VpcCidrBlock:
+    Description: "Cidr Block Range for VPC"
+    Type: String
+    Default: "10.0.0.0/16"
+  
+  CidrBlockForPubS1:
+    Description: "Cidr Block Range for Public Subnet 1"
+    Type: String
+    Default: "10.0.1.0/24"
+  
+  CidrBlockForPubS2:
+    Description: "Cidr Block Range for Public Subnet 2"
+    Type: String
+    Default: "10.0.2.0/24"
+  
+  CidrBlockForPriS1:
+    Description: "Cidr Block Range for Private Subnet 1"
+    Type: String
+    Default: "10.0.3.0/24"
+  
+  CidrBlockForPriS2:
+    Description: "Cidr Block Range for Private Subnet 2"
+    Type: String 
+    Default: "10.0.4.0/24"
+
+  KeyName:
+    Description: "Key Pair for EC2"
+    Type: AWS::EC2::KeyPair::KeyName
+  
+  ImageId:
+    Description: "AMI Image ID"
+    Type: String
+    Default: "ami-090717c950a5c34d3"
+
+  VpcTemplateURL:
+    Description : "URL for Vpc Cfn Template"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/vpc-template-nested.yml"
+
+  ALBAutoscaleTemplateURL:
+    Description : "URL for ALB-Autoscale Cfn Template"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/alb-nlb-autoscale-nested.yml"
+
+  ASGMax:
+    Description: "Max size for ASG"
+    Type: String
+
+  ASGMin:
+    Description: "Min size for ASG"
+    Type: String
+
+  ASGDesired:
+    Description: "Desired size for ASG"
+    Type: String 
+
+Resources:
+  VpcTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref VpcTemplateURL
+      Parameters:
+        VpcCidrBlock: !Ref VpcCidrBlock
+        CidrBlockForPubS1: !Ref CidrBlockForPubS1
+        CidrBlockForPubS2: !Ref CidrBlockForPubS2
+        CidrBlockForPriS1: !Ref CidrBlockForPriS1
+        CidrBlockForPriS2: !Ref CidrBlockForPriS2
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: "Name"
+          Value: !Sub "VPC-Template-${AWS::StackName}"
+
+  ELBAutoscaleTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref ALBAutoscaleTemplateURL
+      Parameters:
+        MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
+        PublicSubnets: !GetAtt VpcTemplate.Outputs.PublicSubnetList
+        PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+        SGalb: !GetAtt VpcTemplate.Outputs.SGLB
+        SGwebserver: !GetAtt VpcTemplate.Outputs.SGweb
+        SGmysql: !GetAtt VpcTemplate.Outputs.SGmysql
+        KeyName: !Ref KeyName
+        ImageId: !Ref ImageId
+        ASGMax: !Ref ASGMax
+        ASGMin: !Ref ASGMin
+        ASGDesired: !Ref ASGDesired
+      TimeoutInMinutes: 20
+      Tags:
+        - Key: "Name"
+          Value: !Sub "ALBAutoscale-Template-${AWS::StackName}"

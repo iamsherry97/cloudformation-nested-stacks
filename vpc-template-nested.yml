@@ -1,0 +1,243 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  "Template for the creation of new vpc,subnets,igw,nat,route table, routes etc"
+Parameters:
+  VpcCidrBlock:
+    Description: Cidr Block Range for VPC
+    Type: String
+    Default: 10.0.0.0/16
+  CidrBlockForPubS1:
+    Description: Cidr Block Range for Public Subnet 1
+    Type: String
+    Default: 10.0.1.0/24
+  CidrBlockForPubS2:
+    Description: Cidr Block Range for Public Subnet 2
+    Type: String
+    Default: 10.0.2.0/24
+  CidrBlockForPriS1:
+    Description: Cidr Block Range for Private Subnet 1
+    Type: String
+    Default: 10.0.3.0/24
+  CidrBlockForPriS2:
+    Description: Cidr Block Range for Private Subnet 2
+    Type: String
+    Default: 10.0.4.0/24
+Resources:
+  MyVpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'VPC-${AWS::StackName}'
+  MyPublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVpc
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref CidrBlockForPubS1
+      AvailabilityZone: us-west-2a
+      Tags:
+        - Key: Name
+          Value: !Sub 'PubS1-${AWS::StackName}'
+  MyPublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVpc
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref CidrBlockForPubS2
+      AvailabilityZone: us-west-2b
+      Tags:
+        - Key: Name
+          Value: !Sub 'PubS2-${AWS::StackName}'
+  MyPrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: !Ref CidrBlockForPriS1
+      AvailabilityZone: us-west-2a
+      Tags:
+        - Key: Name
+          Value: !Sub 'PriS1-${AWS::StackName}'
+  MyPrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: !Ref CidrBlockForPriS2
+      AvailabilityZone: us-west-2b
+      Tags:
+        - Key: Name
+          Value: !Sub 'PriS2-${AWS::StackName}'
+  MyIGW:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 'IGW-${AWS::StackName}'
+  MyVpcIGWAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref MyIGW
+      VpcId: !Ref MyVpc
+  MyNATEIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'MyNatEIP-${AWS::StackName}'
+  MyNatGat:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      SubnetId: !Ref MyPublicSubnet1
+      AllocationId: !GetAtt MyNATEIP.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Sub 'MyNat-${AWS::StackName}'
+  MyPublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'PubRouteTable-${AWS::StackName}'
+  MyPrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'PriRouteTable-${AWS::StackName}'
+  WWWRouteToIGW:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyIGW
+      RouteTableId: !Ref MyPublicRouteTable
+  PriSubnetToNat:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref MyNatGat
+      RouteTableId: !Ref MyPrivateRouteTable
+  PubSubnet1Asso:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MyPublicRouteTable
+      SubnetId: !Ref MyPublicSubnet1
+  PubSubnet2Asso:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MyPublicRouteTable
+      SubnetId: !Ref MyPublicSubnet2
+  PriSubnet1Asso:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MyPrivateRouteTable
+      SubnetId: !Ref MyPrivateSubnet1
+  PriSubnet2Asso:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref MyPrivateRouteTable
+      SubnetId: !Ref MyPrivateSubnet2
+  SgALB:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'SG for Application Load Balancer, allows http only'
+      GroupName: SGALB
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          Description: Allow Http from anywhere
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'SgALB-${AWS::StackName}'
+  SgMySQL:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'SG for MysSQL server allows all mysql and http'
+      GroupName: SGMySQL
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/16
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          Description: Allow mysql traffic 
+        - CidrIp: 10.0.0.0/16
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          Description: Allow ssh 
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'SgMySQL-${AWS::StackName}'
+  SgWebserver:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'SG for webserver, allows http for ALB Mysql for Mysqlserver ans ssh for inside vpc'
+      GroupName: SG-EC2
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref SgMySQL
+          IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          Description: Allow MySql traffic fromMySQL instance only
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          Description: Allow ssh from anywhere
+        - SourceSecurityGroupId: !Ref SgALB
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          Description: Allow Http traffic from ALB
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'SgWebserver-${AWS::StackName}'
+
+
+Outputs:
+  VPC:
+    Description: VPC ID
+    Value: !Ref MyVpc
+#  PublicSubnet1:
+#   Description: Public Subnet 1 ID
+#    Value: !Ref MyPublicSubnet1
+#  PublicSubnet2:
+#    Description: Public Subnet 2 ID
+#    Value: !Ref MyPublicSubnet2
+# PrivateSubnet1:
+#    Description: Private Subnet 1 ID
+#    Value: !Ref MyPrivateSubnet1
+#  PrivateSubnet2:
+#    Description: Private Subnet 2 ID
+#   Value: !Ref MyPrivateSubnet2
+  SGLB:
+    Description: SG for ALB
+    Value: !Ref SgALB
+  SGweb:
+    Description: SG for EC2
+    Value: !Ref SgWebserver
+  SGmysql:
+    Description: SG forMySQL
+    Value: !Ref SgMySQL
+  PublicSubnetList:
+    Description: List of Public Subnets
+    Value: !Join 
+      - ','
+      - - !Ref MyPublicSubnet1
+        - !Ref MyPublicSubnet2
+  PrivateSubnetList:
+    Description: List of Public Subnets
+    Value: !Join 
+      - ','
+      - - !Ref MyPrivateSubnet1
+        - !Ref MyPrivateSubnet2
