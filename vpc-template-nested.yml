@@ -183,11 +183,6 @@ Resources:
       GroupDescription: 'SG for webserver, allows http for ALB Mysql for Mysqlserver ans ssh for inside vpc'
       GroupName: SG-EC2
       SecurityGroupIngress:
-        - SourceSecurityGroupId: !Ref SgMySQL
-          IpProtocol: tcp
-          FromPort: 3306
-          ToPort: 3306
-          Description: Allow MySql traffic fromMySQL instance only
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
           FromPort: 22

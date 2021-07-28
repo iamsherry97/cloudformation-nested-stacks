@@ -28,7 +28,14 @@ Metadata:
           default: "CFN Templates URL"
         Parameters:
         - VpcTemplateURL
-        - ELBAutoscaleTemplateURL
+        - ALBAutoscaleTemplateURL
+        - ALBTemplateURL
+        - NLBTemplateURL
+        - NLBAutoscaleTemplateURL
+      - Label:
+          default: "Select Environment"
+        Parameters:
+        - MyEnv
     ParameterLabels:
       VpcCidrBlock:
         default: "Please specify CIDR range for VPC"
@@ -53,6 +60,16 @@ Metadata:
 
 
 Parameters:
+#------------------------------------------------------------------------------#
+  MyEnv:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+      - qa
+    Description: Select evironment here
+#------------------------------------------------------------------------------#
   VpcCidrBlock:
     Description: "Cidr Block Range for VPC"
     Type: String
@@ -88,15 +105,30 @@ Parameters:
     Default: "ami-090717c950a5c34d3"
 
   VpcTemplateURL:
-    Description : "URL for Vpc Cfn Template"
-    Type: String
-    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/vpc-template-nested.yml"
+   Description : "URL for Vpc Cfn Template"
+   Type: String
+   Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/vpc-template-nested.yml"
 
   ALBAutoscaleTemplateURL:
     Description : "URL for ALB-Autoscale Cfn Template"
     Type: String
-    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/alb-nlb-autoscale-nested.yml"
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/autoscaling-alb.yml"
 
+  ALBTemplateURL:
+    Description : "URL for ALB-Autoscale Cfn Template"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/alb-stack.yml"
+
+  NLBTemplateURL:
+    Description : "URL for ALB-Autoscale Cfn Template"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/nlb-stack.yml"
+
+  NLBAutoscaleTemplateURL:
+    Description : "URL for ALB-Autoscale Cfn Template"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/autoscaling-nlb.yml"
+    
   ASGMax:
     Description: "Max size for ASG"
     Type: String
@@ -124,24 +156,67 @@ Resources:
       Tags:
         - Key: "Name"
           Value: !Sub "VPC-Template-${AWS::StackName}"
+  
+  ApplicationLBTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref ALBTemplateURL
+      Parameters:
+        MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
+        PublicSubnets: !GetAtt VpcTemplate.Outputs.PublicSubnetList
+        SGalb: !GetAtt VpcTemplate.Outputs.SGLB
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: "Name"
+          Value: !Sub "ALB-Template-${AWS::StackName}"
 
-  ELBAutoscaleTemplate:
+  NetworkLBTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref NLBTemplateURL
+      Parameters:
+        MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
+        PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: "Name"
+          Value: !Sub "NLB-Template-${AWS::StackName}"
+
+  NLBautoscalingGTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref NLBAutoscaleTemplateURL
+      Parameters:
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyName
+        SGmysql: !GetAtt VpcTemplate.Outputs.SGmysql
+        ASGMax: !Ref ASGMax
+        ASGMin: !Ref ASGMin
+        ASGDesired: !Ref ASGDesired
+        MyTgNLB: !GetAtt NetworkLBTemplate.Outputs.NLBtg
+        PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: "Name"
+          Value: !Sub "SQLServer-Template-${AWS::StackName}"
+        
+  ALBautoscalingGTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Ref ALBAutoscaleTemplateURL
       Parameters:
-        MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
-        PublicSubnets: !GetAtt VpcTemplate.Outputs.PublicSubnetList
-        PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
-        SGalb: !GetAtt VpcTemplate.Outputs.SGLB
-        SGwebserver: !GetAtt VpcTemplate.Outputs.SGweb
-        SGmysql: !GetAtt VpcTemplate.Outputs.SGmysql
-        KeyName: !Ref KeyName
         ImageId: !Ref ImageId
+        KeyName:  !Ref KeyName
+        SGwebserver: !GetAtt VpcTemplate.Outputs.SGweb
         ASGMax: !Ref ASGMax
         ASGMin: !Ref ASGMin
         ASGDesired: !Ref ASGDesired
-      TimeoutInMinutes: 20
+        MyTgALB: !GetAtt ApplicationLBTemplate.Outputs.ALBtg
+        PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+        MyNLBdns: !GetAtt NetworkLBTemplate.Outputs.NLBDns
+      TimeoutInMinutes: 10
       Tags:
         - Key: "Name"
-          Value: !Sub "ALBAutoscale-Template-${AWS::StackName}"
+          Value: !Sub "WebServer-Template-${AWS::StackName}" 
+    DependsOn: NetworkLBTemplate
+    DependsOn: NLBautoscalingGTemplate
