@@ -29,7 +29,7 @@ Resources:
   MyNLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Type: "application"
+      Type: "network"
       Name: !Sub "MyNLB-${EnvName}"
       Scheme: "internal"
       IpAddressType: "ipv4"

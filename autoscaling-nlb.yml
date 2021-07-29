@@ -35,7 +35,7 @@ Resources:
   MyLaunchconfigsql:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: !GetAtt "MySQLlaunchconfig-${EnvName}"
+      LaunchConfigurationName: !Sub "MySQLlaunchconfig-${EnvName}"
       ImageId: !Ref ImageId
       InstanceType: "t2.micro"
       KeyName: !Ref KeyName
@@ -60,7 +60,7 @@ Resources:
   MyAutoscalingGroupsql:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AutoScalingGroupName: !Sub "AutoscaleGroupsql-${AWS::StackName}-${EnvName}"
+      AutoScalingGroupName: !Sub "AutoscaleGroupsql-${EnvName}"
       MaxSize: !Ref ASGMax
       MinSize: !Ref ASGMin
       DesiredCapacity: !Ref ASGDesired

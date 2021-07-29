@@ -58,7 +58,6 @@ Metadata:
       ASGDesired:
         default: "Autoscaling Group Desired Size"
 
-
 Parameters:
 #------------------------------------------------------------------------------#
   MyEnv:

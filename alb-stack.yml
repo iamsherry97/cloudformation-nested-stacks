@@ -21,7 +21,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       TargetType: "instance"
-      Name: !Sub "MyTgNLB-${EnvName}"
+      Name: !Sub "MyTgALB-${EnvName}"
       Protocol: "HTTP"
       Port: 80
       VpcId: !Ref MyVpcId
@@ -36,7 +36,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Type: "application"
-      Name: !Sub "MyTgNLB-${EnvName}"
+      Name: !Sub "MyALB-${EnvName}"
       Scheme: "internet-facing"
       IpAddressType: "ipv4"
       Subnets: !Split [",",!Ref PublicSubnets]
