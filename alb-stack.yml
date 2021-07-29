@@ -12,13 +12,16 @@ Parameters:
   SGalb:
     Description: "Security Group for ALB"
     Type: String
+  EnvName:
+    Description: "Environment tag"
+    Type: String
 
 Resources:
   MyTgALB:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       TargetType: "instance"
-      Name: "MY-TGALB"
+      Name: !Sub "MyTgNLB-${EnvName}"
       Protocol: "HTTP"
       Port: 80
       VpcId: !Ref MyVpcId
@@ -33,7 +36,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Type: "application"
-      Name: "MyALB"
+      Name: !Sub "MyTgNLB-${EnvName}"
       Scheme: "internet-facing"
       IpAddressType: "ipv4"
       Subnets: !Split [",",!Ref PublicSubnets]

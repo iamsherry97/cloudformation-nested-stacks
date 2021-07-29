@@ -197,8 +197,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub 'SgWebserver-${AWS::StackName}'
-
-
+          
 Outputs:
   VPC:
     Description: VPC ID

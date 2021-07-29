@@ -104,10 +104,15 @@ Parameters:
     Type: String
     Default: "ami-090717c950a5c34d3"
 
+  BucketName:
+    Description: "Bucket containing cfn templates"
+    Type: String
+    Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/"
+
   VpcTemplateURL:
    Description : "URL for Vpc Cfn Template"
    Type: String
-   Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/vpc-template-nested.yml"
+   Default: "https://sherry-cfn-templates.s3.us-west-2.amazonaws.com/prod/vpc-template-nested.yml"
 
   ALBAutoscaleTemplateURL:
     Description : "URL for ALB-Autoscale Cfn Template"
@@ -145,7 +150,7 @@ Resources:
   VpcTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Ref VpcTemplateURL
+      TemplateURL: !Sub "${BucketName}/${MyEnv}/vpc-template-nested.yml"
       Parameters:
         VpcCidrBlock: !Ref VpcCidrBlock
         CidrBlockForPubS1: !Ref CidrBlockForPubS1
@@ -160,11 +165,12 @@ Resources:
   ApplicationLBTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Ref ALBTemplateURL
+      TemplateURL: !Sub "${BucketName}/${MyEnv}/alb-stack.yml"
       Parameters:
         MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
         PublicSubnets: !GetAtt VpcTemplate.Outputs.PublicSubnetList
         SGalb: !GetAtt VpcTemplate.Outputs.SGLB
+        EnvName: !Ref MyEnv
       TimeoutInMinutes: 10
       Tags:
         - Key: "Name"
@@ -173,10 +179,11 @@ Resources:
   NetworkLBTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Ref NLBTemplateURL
+      TemplateURL: !Sub "${BucketName}/${MyEnv}/nlb-stack.yml"
       Parameters:
         MyVpcId: !GetAtt VpcTemplate.Outputs.VPC
         PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+        EnvName: !Ref MyEnv
       TimeoutInMinutes: 10
       Tags:
         - Key: "Name"
@@ -185,7 +192,7 @@ Resources:
   NLBautoscalingGTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Ref NLBAutoscaleTemplateURL
+      TemplateURL: !Sub "${BucketName}/${MyEnv}/autoscaling-nlb.yml"
       Parameters:
         ImageId: !Ref ImageId
         KeyName: !Ref KeyName
@@ -195,6 +202,7 @@ Resources:
         ASGDesired: !Ref ASGDesired
         MyTgNLB: !GetAtt NetworkLBTemplate.Outputs.NLBtg
         PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
+        EnvName: !Ref MyEnv
       TimeoutInMinutes: 10
       Tags:
         - Key: "Name"
@@ -203,7 +211,7 @@ Resources:
   ALBautoscalingGTemplate:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Ref ALBAutoscaleTemplateURL
+      TemplateURL: !Sub "${BucketName}/${MyEnv}/autoscaling-alb.yml"
       Parameters:
         ImageId: !Ref ImageId
         KeyName:  !Ref KeyName
@@ -214,6 +222,8 @@ Resources:
         MyTgALB: !GetAtt ApplicationLBTemplate.Outputs.ALBtg
         PrivateSubnets: !GetAtt VpcTemplate.Outputs.PrivateSubnetList
         MyNLBdns: !GetAtt NetworkLBTemplate.Outputs.NLBDns
+        EnvName: !Ref MyEnv
+
       TimeoutInMinutes: 10
       Tags:
         - Key: "Name"

@@ -27,12 +27,15 @@ Parameters:
   PrivateSubnets: 
     Description:  "List Private subnets"
     Type: String
+  EnvName:
+    Description: "Environment tag"
+    Type: String
 
 Resources:
   MyLaunchconfigsql:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: "MySQLlaunchconfig"
+      LaunchConfigurationName: !GetAtt "MySQLlaunchconfig-${EnvName}"
       ImageId: !Ref ImageId
       InstanceType: "t2.micro"
       KeyName: !Ref KeyName
@@ -57,7 +60,7 @@ Resources:
   MyAutoscalingGroupsql:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AutoScalingGroupName: !Sub "AutoscaleGroupsql-${AWS::StackName}"
+      AutoScalingGroupName: !Sub "AutoscaleGroupsql-${AWS::StackName}-${EnvName}"
       MaxSize: !Ref ASGMax
       MinSize: !Ref ASGMin
       DesiredCapacity: !Ref ASGDesired

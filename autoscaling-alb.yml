@@ -30,12 +30,14 @@ Parameters:
   MyNLBdns:
     Description: "NLB DNS String"
     Type: String
-
+  EnvName:
+    Description: "Environment tag"
+    Type: String
 Resources:
   MyLaunchconfigweb:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: "MyEC2launchconfig"
+      LaunchConfigurationName: !Sub "MyLaunchConfig-${EnvName}"
       ImageId: !Ref ImageId
       InstanceType: "t2.micro"
       KeyName: !Ref KeyName
@@ -70,7 +72,7 @@ Resources:
   MyAutoscalingGroupweb:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AutoScalingGroupName: !Sub "AutoscaleGroupweb-${AWS::StackName}"
+      AutoScalingGroupName: !Sub "AutoscaleGroupweb-${AWS::StackName}-${EnvName}"
       MaxSize: !Ref ASGMax
       MinSize: !Ref ASGMin
       DesiredCapacity: !Ref ASGDesired

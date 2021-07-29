@@ -9,13 +9,15 @@ Parameters:
   PrivateSubnets:
     Description: "Private Subnet List"
     Type: String
-    
+  EnvName:
+    Description: "Environment tag"
+    Type: String
 Resources:
   MyTgNLB:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       TargetType: "instance"
-      Name: "MY-TGNLB"
+      Name: !Sub "MyTgNLB-${EnvName}"
       Protocol: "TCP"
       Port: 3306
       VpcId: !Ref MyVpcId
@@ -27,8 +29,8 @@ Resources:
   MyNLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Type: "network"
-      Name: "MyNLB"
+      Type: "application"
+      Name: !Sub "MyNLB-${EnvName}"
       Scheme: "internal"
       IpAddressType: "ipv4"
       Subnets: !Split [",",!Ref PrivateSubnets]
